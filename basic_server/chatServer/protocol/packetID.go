@@ -1,5 +1,6 @@
 package protocol
 
+
 const (
 	PACKET_ID_PING_REQ = 201
 	PACKET_ID_PING_RES = 202
@@ -31,4 +32,5 @@ const (
 
 	INTERNAL_PACKET_ID_DISCONNECTED_USER_TO_ROOM = 1602
 )
+
 

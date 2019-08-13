@@ -1,7 +1,8 @@
 package roomPkg
 
 import (
-	"study/basic_server/chatServer/protocol"
+	. "GoStudy/basic_server/gohipernetFake"
+	"GoStudy/basic_server/chatServer/protocol"
 	"sync"
 	"sync/atomic"
 )
@@ -31,6 +32,7 @@ type baseRoom struct {
 func (room *baseRoom) initialize(index int32, config RoomConfig) {
 	room._initialize(index, config)
 	room._initUserPool()
+	room._userSessionUniqueIdMap = make(map[uint64]*roomUser)
 }
 
 func (room *baseRoom) _initialize(index int32, config RoomConfig) {
@@ -49,14 +51,14 @@ func (room *baseRoom) _initUserPool() {
 }
 func (room *baseRoom) settingPacketFunction() {
 	maxFuncListCount := 16
-	room._funclist = make([]func(*roomUser, protocol.Packet) int16 , 0 , maxFuncListCount)
-	room._funcPackIdlist = make([]int16, 0 , maxFuncListCount)
+	room._funclist = make([]func(*roomUser, protocol.Packet) int16, 0, maxFuncListCount)
+	room._funcPackIdlist = make([]int16, 0, maxFuncListCount)
 
 	room._addPacketFunction(protocol.PACKET_ID_ROOM_ENTER_REQ, room._packetProcess_EnterUser)
-	room._addPacketFunction(protocol.PACKET_ID_ROOM_LEAVE_REQ, room._packetProcess_LeaveUser)
+	//room._addPacketFunction(protocol.PACKET_ID_ROOM_LEAVE_REQ, room._packetProcess_LeaveUser)
 }
 
-func (room *baseRoom) _addPacketFunction(packetID int16 , packetFunc func(*roomUser, protocol.Packet) int16) {
+func (room *baseRoom) _addPacketFunction(packetID int16, packetFunc func(*roomUser, protocol.Packet) int16) {
 	room._funclist = append(room._funclist, packetFunc)
 	room._funcPackIdlist = append(room._funcPackIdlist, packetID)
 }
@@ -68,7 +70,7 @@ func (room *baseRoom) addUser(userInfo addRoomUserInfo) (*roomUser, int16) {
 	if room.getUser(userInfo.netSessionUniqueId) != nil {
 		return nil, protocol.ERROR_CODE_ENTER_ROOM_DUPLCATION_USER
 	}
-	atomic.AddInt32(&room._curUserCount , 1)
+	atomic.AddInt32(&room._curUserCount, 1)
 
 	user := room._getUserObject()
 	user.init(userInfo.userID, room.generateUserUniqueId())
@@ -91,6 +93,10 @@ func (room *baseRoom) getCurUserCount() int32 {
 	return count
 }
 
+func (room *baseRoom) getNumber() int32 {
+	return room._number
+}
+
 func (room *baseRoom) getUser(sessionUniqueId uint64) *roomUser {
 	if user, ok := room._userSessionUniqueIdMap[sessionUniqueId]; ok {
 		return user
@@ -109,5 +115,52 @@ func (room *baseRoom) generateUserUniqueId() uint64 {
 	return uniqueId
 }
 
-
 // 유저 하나에게 보낼 때는 통으로 보낸다.
+func (room *baseRoom) _allocUserInfo(user *roomUser) (dataSize int16, dataBuffer []byte) {
+	dataSize = user.packetDataSize
+	dataBuffer = make([]byte, dataSize)
+	writer := MakeWriter(dataBuffer, true)
+	_writeUserInfo(&writer, user)
+
+	return dataSize, dataBuffer
+}
+func _writeUserInfo(writer *RawPacketData, user *roomUser) {
+	writer.WriteU64(user.RoomUniqueId)
+	writer.WriteS8(user.IDLen)
+	writer.WriteBytes(user.ID[0:user.IDLen])
+}
+
+func (room *baseRoom) broadcastPacket(packetSize int16,
+	sendPacket []byte,
+	exceptSessionUniqueId uint64) {
+
+	for _, user := range room._userSessionUniqueIdMap {
+		if user.netSessionUniqueId == exceptSessionUniqueId {
+			continue
+		}
+		NetLibPostSendToClient(user.netSessionIndex, user.netSessionUniqueId, sendPacket)
+	}
+}
+
+func (room *baseRoom) allocAllUserInfo(exceptSessionUniqueId uint64) (userCount int8, dataSize int16, dataBuffer []byte) {
+	for _, user := range room._userSessionUniqueIdMap {
+		if user.netSessionUniqueId == exceptSessionUniqueId {
+			continue
+		}
+
+		userCount++
+		dataSize += user.packetDataSize
+	}
+
+	dataBuffer = make([]byte, dataSize)
+	writer := MakeWriter(dataBuffer, true)
+
+	for _, user := range room._userSessionUniqueIdMap {
+		if user.netSessionUniqueId == exceptSessionUniqueId {
+			continue
+		}
+
+		_writeUserInfo(&writer, user)
+	}
+	return userCount, dataSize, dataBuffer
+}

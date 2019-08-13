@@ -84,6 +84,12 @@ func MakeWriter(buffer []byte, isLittleEndian bool) RawPacketData {
 	return RawPacketData{data: buffer, order: binary.BigEndian}
 }
 
+func (p *RawPacketData) ReadBytes(readSize int) (refSlice []byte) {
+	refSlice = p.data[p.pos : p.pos + readSize]
+	p.pos += readSize
+	return 
+}
+
 
 //=================================Writers
 func (p *RawPacketData) WriteS8(v int8) {
@@ -127,4 +133,5 @@ func (p *RawPacketData) WriteString(v string) {
 	copyLen := copy(p.data[p.pos:], v)
 	p.pos += copyLen
 }
+
 

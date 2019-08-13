@@ -1,7 +1,7 @@
 package connectedSessions
 
 import (
-	"study/basic_server/chatServer/protocol"
+	"GoStudy/basic_server/chatServer/protocol"
 	"sync/atomic"
 )
 
@@ -23,13 +23,10 @@ func (session *session) Init(index int32) {
 func (session *session) Clear() {
 	session._ClearUserId()
 	session.setRoomNumber(0, -1, 0)
+	session.SetConnectTimeSec(0,0)
 }
 func (session *session) _ClearUserId() {
 	session._userIDLength = 0
-}
-
-func (session *session) SetConnectTimeSec(timeSec int64, uniqueID uint64) {
-
 }
 
 func (session *session) GetConnectTimeSec() int64 {
@@ -70,4 +67,27 @@ func (session *session) IsAuth() bool {
 
 func (session *session) getUserID() []byte {
 	return session._userID[0:session._userIDLength]
+}
+
+func (session *session) getRoomNumber() (int32, int32) {
+	roomNum := atomic.LoadInt32(&session._RoomNum)
+	roomNumOfEntering := atomic.LoadInt32(&session._RoomNum)
+	return roomNum, roomNumOfEntering
+}
+
+func (session *session) SetUser(sessionUniqueId uint64 ,
+	userID []byte,
+	curTimeSec int64) {
+		session.setUserID(userID)
+		session.setRoomNumber(sessionUniqueId, -1,curTimeSec)// 방어적인 목적으로 채널 번호 초기화
+}
+
+func (session *session) setUserID(userID []byte) {
+	session._userIDLength = int8(len(userID))
+	copy(session._userID[:], userID)
+}
+
+func (session *session) SetConnectTimeSec(timeSec int64, uniqueID uint64) {
+	atomic.StoreInt64(&session._connectTimeSec, timeSec)
+	atomic.StoreUint64(&session._networkUniqueID, uniqueID)
 }

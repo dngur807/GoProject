@@ -1,13 +1,13 @@
 package main
 
 import (
+	"GoStudy/basic_server/chatServer/connectedSessions"
+	"GoStudy/basic_server/chatServer/protocol"
+	"GoStudy/basic_server/chatServer/roomPkg"
+	. "GoStudy/basic_server/gohipernetFake"
 	"go.uber.org/zap"
 	"strconv"
 	"strings"
-	"study/basic_server/chatServer/connectedSessions"
-	"study/basic_server/chatServer/protocol"
-	"study/basic_server/chatServer/roomPkg"
-	. "study/basic_server/gohipernetFake"
 	"time"
 )
 
@@ -51,7 +51,6 @@ func createAnsStartServer(netConfig NetworkConfig, appConfig configAppServer) {
 	server.RoomMgr = roomPkg.NewRoomManager(roomConfig)
 	go server.PacketProcess_goroutine()
 
-
 	networkFunctor := SessionNetworkFunctors{}
 	networkFunctor.OnConnect = server.OnConnect
 	networkFunctor.OnReceive = server.OnReceive
@@ -63,7 +62,7 @@ func createAnsStartServer(netConfig NetworkConfig, appConfig configAppServer) {
 
 	NetLibInitNetwork(PACKET_HEADER_SIZE, PACKET_HEADER_SIZE)
 	NetLibStartNetwork(&netConfig, networkFunctor)
-	
+
 }
 
 func (server *ChatServer) setIPAddress(ipAddress string) bool {
@@ -79,35 +78,36 @@ func (server *ChatServer) setIPAddress(ipAddress string) bool {
 }
 
 func (server *ChatServer) OnConnect(sessionIndex int32, sessionUniqueID uint64) {
-	NTELIB_LOG_INFO("client OnConnect", zap.Int32("sessionIndex",sessionIndex), zap.Uint64("sessionUniqueId",sessionUniqueID))
-	
+	NTELIB_LOG_INFO("client OnConnect", zap.Int32("sessionIndex", sessionIndex), zap.Uint64("sessionUniqueId", sessionUniqueID))
+
 	connectedSessions.AddSession(sessionIndex, sessionUniqueID)
 }
 
-func (server *ChatServer) OnReceive(sessionIndex int32,sessionUniqueID uint64, data []byte) bool {
+func (server *ChatServer) OnReceive(sessionIndex int32, sessionUniqueID uint64, data []byte) bool {
 	NTELIB_LOG_DEBUG("OnReceive", zap.Int32("sessionIndex", sessionIndex),
 		zap.Uint64("sessionUniqueID", sessionUniqueID),
 		zap.Int("packetSize", len(data)))
 
+	server.DistributePacket(sessionIndex, sessionUniqueID, data)
 	return true
 }
 
 func (server *ChatServer) OnClose(sessionIndex int32, sessionUniqueID uint64) {
-	NTELIB_LOG_INFO("client OnCloseClientSession" ,zap.Int32("sessionIndex", sessionIndex) , zap.Uint64("sessionUniqueId" , sessionUniqueID))
-	server.disConnectClient(sessionIndex , sessionUniqueID)
+	NTELIB_LOG_INFO("client OnCloseClientSession", zap.Int32("sessionIndex", sessionIndex), zap.Uint64("sessionUniqueId", sessionUniqueID))
+	server.disConnectClient(sessionIndex, sessionUniqueID)
 }
 
 func (server *ChatServer) disConnectClient(sessionIndex int32, sessionUniqueId uint64) {
 	// 로그인도 안한 유저라면 그냥 여기서 처리한다.
 	// 방 입장을 안한 유저라면 여기서 처리해도 괜찮지만 아래로 넘긴다.
 	if connectedSessions.IsLoginUser(sessionIndex) == false {
-		NTELIB_LOG_INFO("DisConnectClient - Not Login User", zap.Int32("sessionIndex" , sessionIndex))
+		NTELIB_LOG_INFO("DisConnectClient - Not Login User", zap.Int32("sessionIndex", sessionIndex))
 		connectedSessions.RemoveSession(sessionIndex, false)
 		return
 	}
 
-	packet := protocol.Packet {
-		sessionIndex ,
+	packet := protocol.Packet{
+		sessionIndex,
 		sessionUniqueId,
 		protocol.PACKET_ID_SESSION_CLOSE_SYS,
 		0,
@@ -115,13 +115,12 @@ func (server *ChatServer) disConnectClient(sessionIndex int32, sessionUniqueId u
 	}
 
 	server.PacketChan <- packet
-	NTELIB_LOG_INFO("DisConnectClient - Login User" , zap.Int32("sessionIndex" , sessionIndex))
+	NTELIB_LOG_INFO("DisConnectClient - Login User", zap.Int32("sessionIndex", sessionIndex))
 }
-
 
 func (server *ChatServer) Stop() {
 	NTELIB_LOG_INFO("chatServer Stop !!!")
-	
+
 	NetLib_StopServer() // 이 함수가 꼭 제일 먼저 호출 되어야 한다.
 	NTELIB_LOG_INFO("chatServer Stop Waitting...")
 	time.Sleep(1 * time.Second)
