@@ -1,0 +1,10 @@
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\bin\Debug\csharp_test_clinet.exe.config
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\bin\Debug\csharp_test_clinet.exe
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\bin\Debug\csharp_test_clinet.pdb
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\obj\Debug\csharp_test_clinet.csprojAssemblyReference.cache
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\obj\Debug\csharp_test_clinet.Properties.Resources.resources
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\obj\Debug\csharp_test_clinet.csproj.GenerateResource.cache
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\obj\Debug\csharp_test_clinet.csproj.CoreCompileInputs.cache
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\obj\Debug\csharp_test_clinet.exe
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\obj\Debug\csharp_test_clinet.pdb
+E:\Study\C#\basic_client\csharp_test_clinet\csharp_test_clinet\obj\Debug\csharp_test_clinet.mainForm.resources
