@@ -45,6 +45,7 @@ func _start_TCPServer_block(config *NetworkConfig, networkFunctor SessionNetwork
 			TcpConn: conn ,
 			NetworkFunctor:networkFunctor,
 		}
+		client.Index = int32(client.SeqIndex) - 1
 
 		_tcpSessionManager.addSession(client)
 

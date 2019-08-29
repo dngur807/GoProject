@@ -147,11 +147,11 @@ func (loginRes LoginResPacket) EncodingPacket() ([]byte, int16) {
 func (response ErrorNtfPacket) EncodingPacket(errorCode int16) ([]byte, int16) {
 	totalSize := _ClientSessionHeaderSize + 2
 	sendBuf := make([]byte, totalSize)
-	
+
 	writer := MakeWriter(sendBuf, true)
-	EncodingPacketHeader(&writer, totalSize, PACKET_ID_ERROR_NTF , 0 )
+	EncodingPacketHeader(&writer, totalSize, PACKET_ID_ERROR_NTF, 0)
 	writer.WriteS16(errorCode)
-	return sendBuf , totalSize
+	return sendBuf, totalSize
 }
 
 type ErrorNtfPacket struct {
@@ -178,10 +178,50 @@ func PeekPacketBody(rawData []byte) (bodySize int16, refBody []byte) {
 	headerSize := ClientHeaderSize()
 	totalSize := int16(binary.LittleEndian.Uint16(rawData))
 	bodySize = totalSize - headerSize
-	
+
 	if bodySize > 0 {
 		refBody = rawData[headerSize:]
 	}
-	
+
 	return bodySize, refBody
 }
+
+
+type LoginUserInfoNtfPacket struct {
+	RoomNum int32
+	UserId []byte
+}
+
+func (loginUserInfoNtf LoginUserInfoNtfPacket) EncodingPacket() ([]byte, int16) {
+	totalSize := _ClientSessionHeaderSize + 4 + 16
+	sendBuf := make([]byte, totalSize)
+
+	writer := MakeWriter(sendBuf, true)
+	EncodingPacketHeader(&writer, totalSize, PACKET_ID_LOGIN_USER_INFO_NTF, 0)
+	writer.WriteS32(loginUserInfoNtf.RoomNum)
+	writer.WriteBytes(loginUserInfoNtf.UserId)
+	return sendBuf, totalSize
+}
+
+// 나에게 다른 유저들의 정보를 전달해준다.
+type LoginOtherUserInfoNtfPacket struct {
+	TotalUserCount int32
+	UserInfo        []LoginUserInfoNtfPacket
+}
+
+func (otherUserInfo LoginOtherUserInfoNtfPacket) EncodingPacket() ([]byte, int16) {
+	totalSize := _ClientSessionHeaderSize + 4 + (4+16)*int16(otherUserInfo.TotalUserCount)
+	sendBuf := make([]byte, totalSize)
+
+	writer := MakeWriter(sendBuf , true)
+	EncodingPacketHeader(&writer, totalSize , PACKET_ID_LOGIN_OTHER_USER_INFO_NTF , 0)
+	writer.WriteS32(otherUserInfo.TotalUserCount)
+	for i := 0 ; int32(i) < otherUserInfo.TotalUserCount ; i++ {
+		writer.WriteS32(otherUserInfo.UserInfo[i].RoomNum)
+		writer.WriteBytes(otherUserInfo.UserInfo[i].UserId)
+	}
+	return sendBuf , totalSize
+}
+
+
+

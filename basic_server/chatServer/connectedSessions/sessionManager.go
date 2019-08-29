@@ -1,8 +1,10 @@
 package connectedSessions
 
 import (
-	"go.uber.org/zap"
+	"GoStudy/basic_server/chatServer/protocol"
 	. "GoStudy/basic_server/gohipernetFake"
+	"bytes"
+	"go.uber.org/zap"
 	"sync"
 	"sync/atomic"
 )
@@ -79,7 +81,35 @@ func RemoveSession(sessionIndex int32, isLoginUser bool) bool {
 	}
 
 	_manager._sessionList[sessionIndex].Clear()
+	
 	return true
+}
+func GetCurrentUserCount() int32 {
+	return _manager._currentLoginUserCount
+}
+
+func GetUserIDList(exUserId []byte) (protocol.LoginOtherUserInfoNtfPacket, bool)  {
+	var UserInfoList  protocol.LoginOtherUserInfoNtfPacket
+	var index int16
+
+	UserInfoList.TotalUserCount = _manager._currentLoginUserCount - 1
+	UserInfoList.UserInfo = make([]protocol.LoginUserInfoNtfPacket , UserInfoList.TotalUserCount)
+	_manager._UserIDsessionMap.Range(func(k, v interface{}) bool {
+		session := v.(*session)
+
+		userId := bytes.Trim(session._userID[:], "\x00")
+
+		// 예외 아이디 제외
+		if string(userId) ==  string(exUserId) {
+			return true
+		}
+
+		UserInfoList.UserInfo[index].UserId = session._userID[:]
+		UserInfoList.UserInfo[index].RoomNum = session._RoomNum
+		index++
+		return true
+	})
+	return UserInfoList, true
 }
 
 func GetUserID(sessionIndex int32) ([]byte, bool) {
@@ -99,10 +129,9 @@ func SetRoomNumber(sessionIndex int32, sessionUniqueId uint64, roomNum int32, cu
 	return _manager._sessionList[sessionIndex].setRoomNumber(sessionUniqueId, roomNum, curTimeSec)
 }
 
-
 func GetRoomNumber(sessionIndex int32) (int32, int32) {
 	if _validSessionIndex(sessionIndex) == false {
-		NTELIB_LOG_ERROR("Invalid sessionIndex", zap.Int32("sessionIndex",sessionIndex))
+		NTELIB_LOG_ERROR("Invalid sessionIndex", zap.Int32("sessionIndex", sessionIndex))
 		return -1, -1
 	}
 	return _manager._sessionList[sessionIndex].getRoomNumber()
@@ -110,7 +139,7 @@ func GetRoomNumber(sessionIndex int32) (int32, int32) {
 
 func SetLogin(sessionIndex int32, sessionUniqueId uint64, userID []byte, curTimeSec int64) bool {
 	if _validSessionIndex(sessionIndex) == false {
-		NTELIB_LOG_ERROR("Invalid sessionIndex", zap.Int32("sessionIndex" , sessionIndex))
+		NTELIB_LOG_ERROR("Invalid sessionIndex", zap.Int32("sessionIndex", sessionIndex))
 		return false
 	}
 
@@ -120,9 +149,9 @@ func SetLogin(sessionIndex int32, sessionUniqueId uint64, userID []byte, curTime
 		return false
 	}
 
-	_manager._sessionList[sessionIndex].SetUser(sessionUniqueId, userID,curTimeSec)
+	_manager._sessionList[sessionIndex].SetUser(sessionUniqueId, userID, curTimeSec)
 	_manager._UserIDsessionMap.Store(newUserID, _manager._sessionList[sessionIndex])
 
-	atomic.AddInt32(&_manager._currentLoginUserCount , 1)
+	atomic.AddInt32(&_manager._currentLoginUserCount, 1)
 	return true
 }
